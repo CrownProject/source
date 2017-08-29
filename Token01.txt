@@ -1,0 +1,41 @@
+pragma solidity ^0.4.11;
+contract Token01 {
+
+    string public name;                            
+
+    mapping (address => uint256) public balanceOf;   
+    mapping (address => mapping (address => uint256)) public allowed;
+
+    uint256 totalTokens;
+
+    function Token01(                                                                          
+        uint256 initialSupply,
+        string tokenName) {
+
+        totalTokens = initialSupply;
+        balanceOf[msg.sender] = initialSupply;
+        name = tokenName;
+    }
+
+    function transfer(address _to, uint256 _value) {
+        if (balanceOf[msg.sender] < _value || _value <= 0) revert();
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+    }
+
+    function transferFrom(address _from, address _to, uint256 _value) {
+        if (balanceOf[_from] < _value || _value <= 0) revert();
+        if (allowed[_from][msg.sender] < _value) revert();
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowed[_from][msg.sender] -= _value;
+    }
+
+    function approve(address _spender, uint256 _value) {
+        allowed[msg.sender][_spender] = _value;
+    }
+
+    function allowance(address _owner, address _spender) constant returns (uint256 remaining) {
+        return allowed[_owner][_spender];
+    }
+}
