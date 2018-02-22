@@ -1,6 +1,7 @@
+
 pragma solidity ^0.4.18;
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 library SafeMath {
 
@@ -32,7 +33,7 @@ library SafeMath {
   }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract Multiownable {
 
@@ -159,6 +160,8 @@ contract Multiownable {
 
 }
 	
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 contract ContractOwnable is Multiownable{
 
   address public contractOwner;
@@ -181,7 +184,7 @@ contract ContractOwnable is Multiownable{
   }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract ERC20Basic {
 
@@ -200,6 +203,7 @@ contract ERC20 is ERC20Basic {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract BasicToken is ERC20Basic {
 
@@ -245,7 +249,10 @@ contract BasicToken is ERC20Basic {
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 contract StandardToken is ERC20, BasicToken {
+
 
   mapping (address => mapping (address => uint256)) internal allowed;
 
@@ -291,7 +298,13 @@ contract StandardToken is ERC20, BasicToken {
     Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
     return true;
   }
+
+
+
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 
 contract MintableToken is StandardToken, ContractOwnable {
@@ -311,7 +324,7 @@ contract MintableToken is StandardToken, ContractOwnable {
 
   function mint(address _to, uint256 _amount) onlyContractOwner canMint public returns (bool) {
   
-    require(totalSupply_.add(_amount).add(totalReserve) <= totalTokens);
+    require(totalSupply_.add(_amount).add(totalReserve_) <= totalTokens);
   
     totalSupply_ = totalSupply_.add(_amount);
     balances[_to] = balances[_to].add(_amount);
@@ -322,7 +335,7 @@ contract MintableToken is StandardToken, ContractOwnable {
   
   function reserve(address _to, uint256 _amount) onlyContractOwner canMint public returns (bool) {
   
-    require(totalSupply_.add(_amount).add(totalReserve) <= totalTokens);
+    require(totalSupply_.add(_amount).add(totalReserve_) <= totalTokens);
   
     totalReserve_ = totalReserve_.add(_amount);
     reserveBalances[_to] = reserveBalances[_to].add(_amount);
@@ -344,9 +357,20 @@ contract MintableToken is StandardToken, ContractOwnable {
   
   	reserveBalances[_to] = 0;
   	totalReserve_ = totalReserve_.sub(_tokenAmount);
+	
+
+	uint investorIndex = allInvestorsIndicies[_to];
+	if (investorIndex > 0){
+
+		allInvestors[investorIndex-1] = allInvestors[allInvestors.length - 1];
+		allInvestors.length = allInvestors.length - 1;
+		allInvestorsIndicies[allInvestors[investorIndex-1]] = investorIndex;
+		
+		delete allInvestorsIndicies[_to];					
+		delete reserveBalances[_to];
+	}
 
     return _tokenAmount;
-
   }  
 
   function confirm(address _to) onlyContractOwner canMint public returns (bool) {
@@ -384,15 +408,16 @@ contract MintableToken is StandardToken, ContractOwnable {
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 contract CrownPreSaleToken is MintableToken {
-    
+
   string public constant name = "Crown pre-sale token";
   string public constant symbol = "CRW";
   uint32 public constant decimals = 0;
-  
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract CrownPreSale is ContractOwnable {
 
@@ -408,10 +433,6 @@ contract CrownPreSale is ContractOwnable {
   event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
   event Finalized();
 
-  //CrownPreSaleToken public token = new CrownPreSaleToken();
-  //address earlyСontract = 0x123;
-  //earlyСontract.call("transferOwnership", newOwner);
-
   CrownPreSaleToken public token;
 
   function CrownPreSale(uint256 _endTime, address _wallet, CrownPreSaleToken _token) public {
@@ -424,6 +445,7 @@ contract CrownPreSale is ContractOwnable {
   }
 
   function () external payable {
+
     buyTokens(msg.sender);
   }
 
@@ -440,7 +462,6 @@ contract CrownPreSale is ContractOwnable {
     token.mint(beneficiary, tokens);
 
     TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
-    //forwardFunds();
   }
   
    function holdTokens(address buyer) public payable {
@@ -449,7 +470,7 @@ contract CrownPreSale is ContractOwnable {
     require(validPurchase());
 
     uint256 weiAmount = msg.value;
-    uint256 tokens = getTokenAmount(beneficiary, weiAmount); // calculate token amount to be created
+    uint256 tokens = getTokenAmount(buyer, weiAmount); // calculate token amount to be created
 	require(tokens > 0);
 
     weiRaised = weiRaised.add(weiAmount);
@@ -477,15 +498,11 @@ contract CrownPreSale is ContractOwnable {
 	token.confirm(buyer);
   } 
   
-  
-  
 
   function hasEnded() public view returns (bool) {
   
     return now > endTime;
   }
-
-
 
 
   function getTokenAmount(address _beneficiary, uint256 weiAmount) internal view returns(uint256) {
@@ -512,14 +529,6 @@ contract CrownPreSale is ContractOwnable {
 	return weiAmount / 4760000000000000;
    }
 
-
-
-  // override
-  //function forwardFunds() internal {
-  
-    //wallet.transfer(msg.value);
-  //}
-
   function validPurchase() internal view returns (bool) {
   
     bool withinPeriod = now <= endTime;
@@ -527,7 +536,6 @@ contract CrownPreSale is ContractOwnable {
     return withinPeriod && nonZeroPurchase;
   }
   
-
   function finalize() onlyManyOwners public {
 
     require(!isFinalized);
@@ -546,6 +554,8 @@ contract CrownPreSale is ContractOwnable {
   }
   
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract CrownDeposit is ContractOwnable {
 
@@ -604,5 +614,26 @@ contract CrownDeposit is ContractOwnable {
 		investmentAddress.confirmTokens(msg.sender);
     }
 
+}
+
+
+contract BitcoinBase {
+
+	using SafeMath for uint256;
+
+	//enum AddressType {Bitcoin, USD}
+	
+	mapping(address => mapping(int => string)) _database;
+	
+    function BitcoinBase() public {
+    }
+
+    function editAddress(int _addressType, string _address) public{
+	
+	    require(msg.sender != address(0));
+	    require(_addressType == 0 || _addressType == 1);
+		
+		_database[msg.sender][_addressType] = _address;
+    }
 }
 
